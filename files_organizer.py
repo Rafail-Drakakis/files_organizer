@@ -1,62 +1,68 @@
 import os
 import shutil
-import tkinter
-from tkinter import filedialog, messagebox
+import sys
 
-def files_organizer():
-    """
-    The `files_organizer` function organizes files in the selected directory by moving them into
-    folders based on their file extensions.
-    """
-    # Prompt the user to select a directory
-    directory = filedialog.askdirectory()
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
-    if not directory:
-        return  # No directory selected, exit the function
 
-    # Get all files in the directory
-    files = os.listdir(directory)
+class FilesOrganizer(QMainWindow):
+    """Main application window."""
 
-    # Create a dictionary to hold the file extensions and their corresponding folders
-    file_types = {}
+    def __init__(self) -> None:
+        super().__init__()
+        self.setWindowTitle("Files Organizer")
+        self.setFixedSize(300, 150)
 
-    # Loop through each file and organize them by extension
-    for file in files:
-        # Exclude the files_organizer.py file from being moved (assuming it's the file which contains the code)
-        if file == "files_organizer.py":
-            continue
+        container = QWidget()
+        self.setCentralWidget(container)
+        layout = QVBoxLayout(container)
 
-        # Get the file extension
-        file_extension = os.path.splitext(file)[1]
+        self.organize_button = QPushButton("Organize Files")
+        self.organize_button.clicked.connect(self.organize_files)
+        layout.addWidget(self.organize_button)
 
-        # If the file extension doesn't exist in the dictionary, create a new folder for it
-        if file_extension not in file_types:
-            folder_name = file_extension.replace(".", "")
-            folder_path = os.path.join(directory, folder_name)
+    def organize_files(self) -> None:
+        """Prompt for a directory and organize files by extension."""
 
-            # Check if the folder already exists
-            if not os.path.exists(folder_path):
-                os.mkdir(folder_path)
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if not directory:
+            return
 
-            file_types[file_extension] = folder_name
+        for file_name in os.listdir(directory):
+            file_path = os.path.join(directory, file_name)
+            if not os.path.isfile(file_path):
+                continue
 
-        # Move the file to the corresponding folder
-        src_path = os.path.join(directory, file)
-        dst_path = os.path.join(directory, file_types[file_extension], file)
-        shutil.move(src_path, dst_path)
+            # Skip this script if it's inside the selected directory
+            if os.path.abspath(file_path) == os.path.abspath(__file__):
+                continue
 
-    # Show a message box indicating the files have been organized
-    messagebox.showinfo("Files Organized", "Files have been organized successfully!")
+            extension = os.path.splitext(file_name)[1].lower()
+            folder_name = extension[1:] if extension else "no_extension"
+            destination = os.path.join(directory, folder_name)
+            os.makedirs(destination, exist_ok=True)
+
+            shutil.move(file_path, os.path.join(destination, file_name))
+
+        QMessageBox.information(self, "Files Organized", "Files have been organized successfully!")
+
+
+def main() -> None:
+    """Run the application."""
+
+    app = QApplication(sys.argv)
+    window = FilesOrganizer()
+    window.show()
+    sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
-    # Create the main GUI window
-    window = tkinter.Tk()
-    window.title("Files Organizer")
-    window.geometry("200x200")
-
-    # Create a button to trigger the files_organizer function
-    organize_button = tkinter.Button(window, text="Organize Files", command=files_organizer)
-    organize_button.pack(pady=10)
-
-    # Run the GUI main loop
-    window.mainloop()
+    main()
